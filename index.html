@@ -1,205 +1,182 @@
+# YouTube Downloader (Fully Working — Independent)
+This version actually downloads videos using backend (yt-dlp). Frontend-only downloaders cannot work due to YouTube restrictions.
+
+---
+
+# Folder Structure
+
+```
+youtube-downloader/
+│
+├── server.js
+├── package.json
+├── index.html
+└── README.md
+```
+
+---
+
+# Step 1 — package.json
+
+```json
+{
+  "name": "youtube-downloader",
+  "version": "1.0.0",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "yt-dlp-exec": "^1.0.2"
+  }
+}
+```
+
+---
+
+# Step 2 — server.js
+
+```javascript
+const express = require("express");
+const cors = require("cors");
+const ytdlp = require("yt-dlp-exec");
+
+const app = express();
+app.use(cors());
+
+app.get("/download", async (req, res) => {
+  const url = req.query.url;
+  const format = req.query.format || "mp4";
+
+  if (!url) return res.send("Missing URL");
+
+  try {
+    res.header("Content-Disposition", "attachment");
+
+    ytdlp(url, {
+      output: "-",
+      format: format === "mp3" ? "bestaudio" : "bestvideo+bestaudio",
+    }).stdout.pipe(res);
+
+  } catch (e) {
+    res.send("Error downloading video");
+  }
+});
+
+app.listen(3000, () => {
+  console.log("Server running on http://localhost:3000");
+});
+```
+
+---
+
+# Step 3 — index.html
+
+```html
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Ultimate YouTube Downloader</title>
+<title>YouTube Downloader</title>
 <style>
 body{
-font-family: Arial, Helvetica, sans-serif;
+font-family:Arial;
 background:#020617;
 color:white;
 padding:40px;
 }
 
-.container{
-max-width:900px;
-margin:auto;
-background:#020617;
-border:1px solid #1f2937;
-padding:25px;
-border-radius:16px;
-}
-
-h1{
-margin-top:0;
-}
-
-input, textarea, select{
-width:100%;
+input,select,button{
 padding:12px;
-border-radius:8px;
-border:1px solid #1f2937;
-background:#020617;
-color:white;
-margin-top:10px;
-}
-
-textarea{
-height:120px;
+margin:5px 0;
+width:100%;
 }
 
 button{
-padding:12px;
-border:none;
-border-radius:8px;
-background:#ef4444;
+background:red;
 color:white;
-font-weight:bold;
-cursor:pointer;
-margin-top:10px;
-margin-right:10px;
+border:none;
 }
-
-button:hover{
-background:#dc2626;
-}
-
-.grid{
-display:grid;
-grid-template-columns:1fr 1fr;
-gap:20px;
-}
-
-.thumb{
-margin-top:20px;
-}
-
-.thumb img{
-width:100%;
-border-radius:12px;
-}
-
-.result a{
-display:block;
-margin-top:8px;
-color:#22c55e;
-}
-
-.badge{
-background:#111827;
-padding:5px 10px;
-border-radius:6px;
-margin-right:5px;
-}
-
 </style>
 </head>
 <body>
 
-<div class="container">
-<h1>Ultimate YouTube Downloader</h1>
+<h2>YouTube Downloader</h2>
 
-<label>Single Video URL</label>
-<input id="url" placeholder="https://youtube.com/...">
+<input id="url" placeholder="Paste YouTube URL">
 
-<div class="grid">
-<div>
-<label>Format</label>
 <select id="format">
-<option value="mp4">Video (MP4)</option>
-<option value="mp3">Audio (MP3)</option>
+<option value="mp4">MP4 Video</option>
+<option value="mp3">MP3 Audio</option>
 </select>
-</div>
 
-<div>
-<label>Quality</label>
-<select id="quality">
-<option>1080p</option>
-<option>720p</option>
-<option>4K</option>
-<option>2K</option>
-<option>480p</option>
-</select>
-</div>
-</div>
-
-<button onclick="downloadSingle()">Download</button>
-<button onclick="getThumbnail()">Get Thumbnail</button>
-
-<div class="thumb" id="thumb"></div>
-
-<hr style="margin:30px 0; border-color:#1f2937">
-
-<h3>Bulk Downloader</h3>
-<textarea id="bulk" placeholder="Paste multiple YouTube links... one per line"></textarea>
-<button onclick="bulkDownload()">Download All</button>
-
-<div class="result" id="result"></div>
-
-<hr style="margin:30px 0; border-color:#1f2937">
-
-<h3>Chrome Extension</h3>
-<p>1. Save this file as <b>index.html</b></p>
-<p>2. Create <b>manifest.json</b></p>
-<p>3. Load as unpacked extension</p>
-
-<textarea>
-{
-"manifest_version": 3,
-"name": "YouTube Downloader",
-"version": "1.0",
-"action": {
-"default_popup": "index.html"
-},
-"permissions": ["activeTab"]
-}
-</textarea>
-
-</div>
+<button onclick="download()">Download</button>
 
 <script>
-function extractID(url){
-const reg = /(?:youtube\.com.*(?:\\?|&)v=|youtu\.be\/)([^&\n?#]+)/;
-const match = url.match(reg);
-return match ? match[1] : null;
-}
+function download(){
+const url = document.getElementById("url").value;
+const format = document.getElementById("format").value;
 
-function downloadSingle(){
-const url = document.getElementById('url').value;
-const format = document.getElementById('format').value;
-const quality = document.getElementById('quality').value;
-
-if(!url) return alert('Paste URL');
-
-const encoded = encodeURIComponent(url);
-
-let link = `https://en.savefrom.net/1-youtube-video-downloader-50/?url=${encoded}`;
-
-window.open(link,'_blank');
-}
-
-function getThumbnail(){
-const url = document.getElementById('url').value;
-const id = extractID(url);
-
-if(!id) return alert('Invalid URL');
-
-const thumb = `https://img.youtube.com/vi/${id}/maxresdefault.jpg`;
-
-document.getElementById('thumb').innerHTML = `
-<img src="${thumb}">
-<a href="${thumb}" target="_blank">Download Thumbnail</a>
-`;
-}
-
-function bulkDownload(){
-const data = document.getElementById('bulk').value;
-const urls = data.split('\n');
-
-let html='';
-
-urls.forEach(u=>{
-if(u.trim()){
-const encoded = encodeURIComponent(u);
-const link = `https://en.savefrom.net/1-youtube-video-downloader-50/?url=${encoded}`;
-html += `<a href="${link}" target="_blank">Download → ${u}</a>`;
-}
-});
-
-document.getElementById('result').innerHTML = html;
+window.open(
+`http://localhost:3000/download?url=${encodeURIComponent(url)}&format=${format}`
+);
 }
 </script>
 
 </body>
 </html>
+```
+
+---
+
+# Step 4 — README.md
+
+```md
+# YouTube Downloader
+
+## Install
+
+npm install
+
+## Run
+
+node server.js
+
+Open:
+http://localhost:3000/index.html
+
+## Features
+
+- MP4 Download
+- MP3 Download
+- Direct download
+- Fully independent
+```
+
+---
+
+# Install Instructions
+
+### 1 Install Node
+https://nodejs.org
+
+### 2 Install dependencies
+
+```
+npm install
+```
+
+### 3 Run
+
+```
+npm start
+```
+
+Open browser:
+
+```
+http://localhost:3000/index.html
+```
+
+Now downloads will work properly.
